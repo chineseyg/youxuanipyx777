@@ -29,12 +29,13 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: update ip.txt and ipv6.txt [auto]"
-          file_pattern: 'ip.txt ipv6.txt'
+          file_pattern: ip.txt,ipv6.txt  # 逗号分隔,防空格glob
           commit_user_name: GitHub Action
           commit_user_email: action@github.com
-          disable_globbing: true  # 防glob扩展错误
-          skip_dirty_check: true  # 允许无变化时强制commit
-          skip_fetch: true  # 加速，跳过fetch
+          disable_globbing: true
+          skip_dirty_check: true
+          skip_fetch: true
+          skip_on_no_changes: true  # 跳过无变化/空文件commit,避免错误
       - name: Post Set Python
         run: echo "Post-setup complete"
       - name: Post Check out repository
