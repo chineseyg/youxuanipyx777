@@ -7,22 +7,21 @@ import ipaddress
 # 目标URL列表
 urls = [
     'https://ip.164746.xyz', 
-    'https://api.uouin.com/cloudflare.html',
+    'https://api.uouin.com/cloudflare.html'，
     'https://ipdb.api.030101.xyz/?type=bestcf&country=true',
     'https://addressesapi.090227.xyz/CloudFlareYes',
     'https://raw.githubusercontent.com/ymyuuu/IPDB/main/BestCF/bestcfv4.txt',
     'https://www.wetest.vip/page/cloudflare/address_v6.html',
     'https://www.wetest.vip/page/cloudflare/address_v4.html',
-    'https://cf.090227.xyz', 
-    'https://stock.hostmonit.com/CloudFlareYes',
-    'https://addressesapi.090227.xyz/ip.164746.xyz',
-    'https://api.uouin.com/cloudflare.html'
+    'https://cf.090227.xyz'， 
+    'https://stock.hostmonit.com/CloudFlareYes'，
+    'https://addressesapi.090227.xyz/ip.164746.xyz'
 ]
 
 
 # 正则表达式用于初步匹配IPV4与IPV6地址（配合ipaddress库二次过滤）
 ipv4_pattern = r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b'
-ipv6_pattern = r'\b(?:[A-F0-9a-f]{1,4}:){1,7}[A-F0-9a-f]{1,4}\b'  # 加入小写支持
+ipv6_pattern = r'(?:(?:[0-9A-Fa-f]{1,4}:){6}(?:[0-9A-Fa-f]{1,4}|(?<=:)[0-9A-Fa-f]{0,4})|(?:[0-9A-Fa-f]{1,4}:){5}(?::[0-9A-Fa-f]{1,4}){1,2}|(?:[0-9A-Fa-f]{1,4}:){4}(?::[0-9A-Fa-f]{1,4}){1,3}|(?:[0-9A-Fa-f]{1,4}:){3}(?::[0-9A-Fa-f]{1,4}){1,4}|(?:[0-9A-Fa-f]{1,4}:){2}(?::[0-9A-Fa-f]{1,4}){1,5}|(?:[0-9A-Fa-f]{1,4}:){1}(?::[0-9A-Fa-f]{1,4}){1,6}|(?::(?::[0-9A-Fa-f]{1,4}){1,7}|:)|(?:[0-9A-Fa-f]{1,4}:)(?::[0-9A-Fa-f]{1,4}){0,6})'  # 加入小写支持
 
 # 检查ip.txt和ipv6.txt文件是否存在,如果存在则删除它
 if os.path.exists('ip.txt'):
