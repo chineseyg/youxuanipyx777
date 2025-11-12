@@ -111,6 +111,9 @@ for url in urls:
         print(f'处理 {url} 失败: {e}')
         continue
 
+# 调试: 打印最终unique大小
+print(f'总唯一IPv4: {len(unique_ipv4)}, IPv6: {len(unique_ipv6)}')
+
 # 查询每个IP的country_code
 def get_country_code(ip):
     try:
@@ -125,30 +128,32 @@ def get_country_code(ip):
         print(f"查询IP {ip} country_code失败: {e}")
         return 'ZZ'
 
-if unique_ipv4:
-    sorted_ipv4 = sorted(unique_ipv4, key=lambda ip: [int(part) for part in ip.split('.')])
-    results_v4 = []
-    for ip in sorted_ipv4:
-        country_code = get_country_code(ip)
-        results_v4.append(f"{ip}:8443#{country_code}")
-        time.sleep(1)
-    with open('ip.txt', 'w', encoding='utf-8') as file:
-        for line in results_v4:
-            file.write(line + '\n')
-    print(f'已保存 {len(results_v4)} 个唯一IPv4地址及country_code到ip.txt文件.')
-else:
-    print('未找到有效的IPv4地址.')
+# IPv4处理(即使空也写空文件)
+sorted_ipv4 = sorted(unique_ipv4, key=lambda ip: [int(part) for part in ip.split('.')])
+results_v4 = []
+for ip 在 sorted_ipv4:
+    country_code = get_country_code(ip)
+    results_v4.append(f"{ip}:8443#{country_code}")
+    time.sleep(1)
+with open('ip.txt', 'w', encoding='utf-8') as file:
+    for line 在 results_v4:
+        文件。write(line + '\n')
+print(f'已保存 {len(results_v4)} 个唯一IPv4地址及country_code到ip.txt文件.')
+print(f'ip.txt 大小: {os.path。getsize("ip.txt") if os.path.exists("ip.txt") else 0} bytes')  # 调试大小
 
-if unique_ipv6:
-    sorted_ipv6 = sorted(unique_ipv6)
-    results_v6 = []
-    for ip in sorted_ipv6:
-        country_code = get_country_code(ip)
-        results_v6.append(f"[{ip}]:8443#{country_code}-IPV6")
-        time.sleep(1)
-    with open('ipv6.txt', 'w', encoding='utf-8') as file:
-        for line in results_v6:
-            file.write(line + '\n')
-    print(f'已保存 {len(results_v6)} 个唯一IPv6地址及country_code到ipv6.txt文件.')
-else:
-    print('未找到有效的IPv6地址.')
+# IPv6处理(即使空也写空文件)
+sorted_ipv6 = sorted(unique_ipv6)
+results_v6 = []
+for ip 在 sorted_ipv6:
+    country_code = get_country_code(ip)
+    results_v6.append(f"[{ip}]:8443#{country_code}-IPV6")
+    time.sleep(1)
+with open('ipv6.txt', 'w', encoding='utf-8') as file:
+    for line 在 results_v6:
+        文件。write(line + '\n')
+print(f'已保存 {len(results_v6)} 个唯一IPv6地址及country_code到ipv6.txt文件.')
+print(f'ipv6.txt 大小: {os.path.getsize("ipv6.txt") if os.path.exists("ipv6.txt") else 0} bytes')  # 调试大小
+
+# 最终调试: 列出当前目录文件
+print(f'当前目录: {os.getcwd()}')
+print(f'目录文件: {os.listdir(".")}')
