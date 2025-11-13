@@ -1,9 +1,9 @@
-name: IP Speed Test
+name: IP Speed Test (CF Optimized)
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # 每 6 小时运行一次 (UTC: 00:00, 06:00, 12:00, 18:00)
-  workflow_dispatch:  # 支持手动触发
+    - cron: '0 */6 * * *'  # 每 6 小时
+  workflow_dispatch:
 
 jobs:
   test-speed:
@@ -13,14 +13,16 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Install curl
+      run: sudo apt-get update && sudo apt-get install -y curl
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
 
-    - name: Install dependencies
-      run: |
-        pip install requests[socks]  # 加 SOCKS 支持
+    - name: Install Python deps
+      run: pip install requests
 
     - name: Run speed test script
       run: python test_speed.py
@@ -33,7 +35,7 @@ jobs:
         if git diff --staged --quiet; then
           echo "No changes to commit"
         else
-          git commit -m "Update IP speed test results [auto] - All successful IPs (multi-port)"
+          git commit -m "Update IP speed test results [auto] - CF optimized"
           git push
         fi
       env:
