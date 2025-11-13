@@ -120,7 +120,7 @@ def main():
             time.sleep(1)
 
             if speed > 0:
-                result = f"{ip}#{cn_country} {speed}MB/s"  # 格式: IP#国家 速率
+                result = f"{ip}#{cn_country} {speed}MB/s"  # 格式: IP#国家-速率
                 results.append(result)
                 print(f"  -> 成功: {result}")
             else:
