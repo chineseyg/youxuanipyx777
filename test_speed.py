@@ -13,9 +13,9 @@ FILE_SIZE = 10485760  # 字节，用于验证
 # 默认端口
 DEFAULT_PORT = 8443
 
-# 英文国家名到中文翻译字典 (扩展更多常见国家，包括特殊 fallback)
+# 英文国家名到中文翻译字典 (扩展更多)
 EN_TO_CN = {
-    'United States': '美国',
+    'United States': '美国',  # 精确匹配你的 IP
     'Canada': '加拿大',
     'China': '中国',
     'United Kingdom': '英国',
@@ -34,48 +34,55 @@ EN_TO_CN = {
     'Reserved': '预留',
     'Global': '全球',
     'Unknown': '未知'
-    # 可继续添加
 }
 
-def get_chinese_country(ip, max_retries=3):
-    """查询 IP 国家，并返回中文名（优化：HTTPS、重试、调试日志）"""
+# 浏览器 UA，绕 403
+USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+
+def get_chinese_country(ip, max_retries=1):
+    """查询 IP 国家（优化：UA + 备用 API + 调试，只重试1次）"""
+    headers = {'User-Agent': USER_AGENT}
     for attempt in range(max_retries):
         try:
-            # 改用 HTTPS，更稳定
+            # 主 API: ip-api.com
             url = f'https://ip-api.com/json/{ip}?fields=status,country'
-            print(f"  查询 {ip} (尝试 {attempt+1})...")
-            response = requests.get(url, timeout=10)  # 加大超时
-            print(f"  Status: {response.status_code}, Text len: {len(response.text)}")  # 调试日志
+            print(f"  查询 {ip} (尝试 {attempt+1}, 主 API)...")
+            response = requests.get(url, headers=headers, timeout=10)
+            print(f"  Status: {response.status_code}, Text len: {len(response.text)}")
+            print(f"  响应预览: {response.text[:50]}...")  # 调试：看错误文本
             
-            if response.status_code != 200:
-                print(f"  HTTP {response.status_code} 错误")
-                raise ValueError(f"HTTP {response.status_code}")
-            
-            data = response.json()
-            if data['status'] == 'success':
-                en_country = data.get('country', 'Unknown')
-                cn_country = EN_TO_CN.get(en_country, en_country)  # fallback 原英文，避免全未知
-                print(f"  国家: {en_country} -> {cn_country}")
-                return cn_country
+            if response.status_code == 200:
+                data = response.json()
+                if data['status'] == 'success':
+                    en_country = data.get('country', 'Unknown')
+                    cn_country = EN_TO_CN.get(en_country, en_country)
+                    print(f"  国家: {en_country} -> {cn_country}")
+                    return cn_country
+                else:
+                    print(f"  API fail: {data.get('message', 'Unknown')}")
+            elif response.status_code == 403:
+                print("  403 疑似 bot 检测/限速，尝试备用 API...")
+                # 备用: ipapi.co (免费，限 1000/day，无 UA 严查)
+                backup_url = f'https://ipapi.co/{ip}/country_name/'
+                backup_resp = requests.get(backup_url, headers=headers, timeout=10)
+                if backup_resp.status_code == 200:
+                    en_country = backup_resp.text.strip()
+                    cn_country = EN_TO_CN.get(en_country, en_country)
+                    print(f"  备用成功: {en_country} -> {cn_country}")
+                    return cn_country
+                else:
+                    print(f"  备用也失败: {backup_resp.status_code}")
             else:
-                print(f"  API fail: {data.get('message', 'Unknown')}")
-                raise ValueError(data.get('message', 'API error'))
-        except requests.exceptions.Timeout:
-            print(f"  超时 (尝试 {attempt+1})")
-        except requests.exceptions.ConnectionError as e:
-            print(f"  连接失败 (尝试 {attempt+1}): {e}")
-        except ValueError as e:
-            print(f"  值错误: {e}")
-        except Exception as e:  # 包括 JSON 错误
+                raise ValueError(f"HTTP {response.status_code}")
+        
+        except Exception as e:
             print(f"  异常 (尝试 {attempt+1}): {e}")
-            if 'Expecting value' in str(e) and len(response.text) == 0:
-                print("  疑似空响应，可能是限速/网络")
         
         if attempt < max_retries - 1:
-            time.sleep(2 ** attempt)  # 指数退避：1s, 2s, 4s，防限速
+            time.sleep(2 ** attempt)  # 指数退避（但 max_retries=1 时无延时）
     
     print(f"  国家查询最终失败 {ip}")
-    return '未知'  # 最终 fallback
+    return '未知'
 
 def test_speed(ip, retries=1):
     """用 curl --resolve 测试 CF 带宽 (MB/s)，重试失败"""
@@ -108,7 +115,7 @@ def test_speed(ip, retries=1):
                     if speed_mbps > 0:
                         print(f" 成功！下载 {downloaded/1048576:.1f}MB, 速度: {round(speed_mbps, 1)}MB/s")
                         return round(speed_mbps, 1)
-                print(f" 下载不完整 (code {result.returncode}): {output}")
+                print(f" 下载不完整: {output}")
                 return 0.0
             else:
                 print(f" curl 失败 (code {result.returncode}): {result.stderr.strip() if result.stderr else 'Timeout'}")
@@ -139,26 +146,25 @@ def main():
         results = []
         failed_count = 0
         for line in lines:
-            # 提取 IP 和可选端口 (格式: IP:PORT#US 或 IP#US)
             match = re.match(r'^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::(\d+))?\s*#(.*)$', line)
             if not match:
                 print(f"跳过无效行: {line}")
                 continue
             ip = match.group(1)
-            port = match.group(2) or str(DEFAULT_PORT)  # 优先自带端口，没有默认8443
+            port = match.group(2) or str(DEFAULT_PORT)
             ip_port = f"{ip}:{port}"
             cn_country = get_chinese_country(ip)
             print(f"\n测试 {ip_port} - {cn_country}")
             speed = test_speed(ip)
-            time.sleep(0.5)  # 加小延时，防 API 限速（查询+测速间隔）
+            time.sleep(1)  # 查询+测速延时，防限速
             if speed > 0:
-                result = f"{ip_port}#{cn_country} {speed}MB/s"  # 格式: IP:端口#国家 速率
+                result = f"{ip_port}#{cn_country} {speed}MB/s"
                 results.append(result)
                 print(f" -> 成功: {result}")
             else:
                 failed_count += 1
                 print(f" -> 失败: 连接不通")
-        # 写入 speed_ip.txt (纯列表，无头部，按速度降序)
+        # 写入 speed_ip.txt (按速度降序)
         with open('speed_ip.txt', 'w', encoding='utf-8') as f:
             for res in sorted(results, key=lambda x: float(re.search(r'(\d+\.?\d*)MB/s', x).group(1)), reverse=True):
                 f.write(res + '\n')
