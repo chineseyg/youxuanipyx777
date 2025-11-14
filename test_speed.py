@@ -55,18 +55,26 @@ EN_TO_CN = {
 }
 
 def get_chinese_country(ip):
-    """查询 IP 国家，并返回中文名（主: ip-api.com HTTP；无信息时备用1: ipinfo.io → 备用2: ipgeolocation.io）"""
+    """查询 IP 国家，并返回中文名（主: ip-api.com；"未知"/失败时备用1: ipinfo.io → 备用2: ipgeolocation.io）"""
+    # 主 API: ip-api.com (HTTP 如前两天)
     try:
-        # 主 API: ip-api.com (HTTP 如前两天，简单调用)
         response = requests.get(f'http://ip-api.com/json/{ip}?fields=status,country,countryCode', timeout=5)
         data = response.json()
         if data['status'] == 'success':
             en_country = data.get('countryCode') or data.get('country', 'Unknown')  # 优先 code
-            cn_country = EN_TO_CN.get(en_country, '未知')  # 翻译或 fallback
-            print(f" 国家: {en_country} -> {cn_country}")
-            return cn_country
-        print("  ip-api.com 无有效信息，尝试备用1: ipinfo.io...")
-        # 备用1: ipinfo.io
+            if en_country != 'Unknown':
+                cn_country = EN_TO_CN.get(en_country, en_country)
+                print(f" 国家: {en_country} -> {cn_country}")
+                return cn_country
+            else:
+                print("  ip-api.com 返回 Unknown，尝试备用1: ipinfo.io...")
+        else:
+            print(f"  ip-api.com status fail: {data.get('message', 'Unknown')}，尝试备用1: ipinfo.io...")
+    except Exception as e:
+        print(f"  ip-api.com 查询失败 {ip}: {e}，尝试备用1: ipinfo.io...")
+    
+    # 备用1: ipinfo.io
+    try:
         backup1_resp = requests.get(f'https://ipinfo.io/{ip}/country', timeout=5)
         if backup1_resp.status_code == 200:
             en_country1 = backup1_resp.text.strip()
@@ -74,35 +82,29 @@ def get_chinese_country(ip):
                 cn_country = EN_TO_CN.get(en_country1, en_country1)
                 print(f"  备用1 成功: {en_country1} -> {cn_country}")
                 return cn_country
-            print("  ipinfo.io 无有效信息，尝试备用2: ipgeolocation.io...")
-            # 备用2: ipgeolocation.io (demo key)
-            backup2_resp = requests.get(f'https://api.ipgeolocation.io/ipgeo?apiKey=demo&ip={ip}&fields=country_code,country_name', timeout=5)
-            if backup2_resp.status_code == 200:
-                backup2_data = backup2_resp.json()
-                en_country2 = backup2_data.get('country_code') or backup2_data.get('country_name', 'Unknown')
-                if en_country2 != 'Unknown':
-                    cn_country = EN_TO_CN.get(en_country2, en_country2)
-                    print(f"  备用2 成功: {en_country2} -> {cn_country}")
-                    return cn_country
-                print("  备用2 也无有效信息")
             else:
-                print(f"  备用2 失败: {backup2_resp.status_code}")
+                print("  ipinfo.io 返回 Unknown，尝试备用2: ipgeolocation.io...")
         else:
             print(f"  备用1 失败: {backup1_resp.status_code}，尝试备用2...")
-            backup2_resp = requests.get(f'https://api.ipgeolocation.io/ipgeo?apiKey=demo&ip={ip}&fields=country_code,country_name', timeout=5)
-            if backup2_resp.status_code == 200:
-                backup2_data = backup2_resp.json()
-                en_country2 = backup2_data.get('country_code') or backup2_data.get('country_name', 'Unknown')
-                if en_country2 != 'Unknown':
-                    cn_country = EN_TO_CN.get(en_country2, en_country2)
-                    print(f"  备用2 成功: {en_country2} -> {cn_country}")
-                    return cn_country
-                print("  备用2 也无有效信息")
-            else:
-                print(f"  备用2 失败: {backup2_resp.status_code}")
+    except Exception as e:
+        print(f"  备用1 异常: {e}，尝试备用2...")
+    
+    # 备用2: ipgeolocation.io (demo key)
+    try:
+        backup2_resp = requests.get(f'https://api.ipgeolocation.io/ipgeo?apiKey=demo&ip={ip}&fields=country_code,country_name', timeout=5)
+        if backup2_resp.status_code == 200:
+            backup2_data = backup2_resp.json()
+            en_country2 = backup2_data.get('country_code') or backup2_data.get('country_name', 'Unknown')
+            if en_country2 != 'Unknown':
+                cn_country = EN_TO_CN.get(en_country2, en_country2)
+                print(f"  备用2 成功: {en_country2} -> {cn_country}")
+                return cn_country
+            print("  备用2 返回 Unknown")
+        else:
+            print(f"  备用2 失败: {backup2_resp.status_code}")
         return '未知'
     except Exception as e:
-        print(f" 国家查询失败 {ip}: {e}")
+        print(f"  备用2 异常: {e}")
         return '未知'
 
 def test_speed(ip, retries=1):
